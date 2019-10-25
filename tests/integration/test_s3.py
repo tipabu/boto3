@@ -59,10 +59,11 @@ def random_bucket_name(prefix='boto3-transfer', num_chars=10):
 
 _SHARED_BUCKET = random_bucket_name()
 _DEFAULT_REGION = 'us-west-2'
+_ENDPOINT_URL = None
 
 
 def setup_module():
-    s3 = boto3.client('s3')
+    s3 = boto3.client('s3', endpoint_url=_ENDPOINT_URL)
     waiter = s3.get_waiter('bucket_exists')
     params = {
         'Bucket': _SHARED_BUCKET,
@@ -81,7 +82,7 @@ def setup_module():
 
 
 def clear_out_bucket(bucket, region, delete_bucket=False):
-    s3 = boto3.client('s3', region_name=region)
+    s3 = boto3.client('s3', region_name=region, endpoint_url=_ENDPOINT_URL)
     page = s3.get_paginator('list_objects')
     # Use pages paired with batch delete_objects().
     for page in page.paginate(Bucket=bucket):
@@ -169,7 +170,7 @@ class TestS3Resource(unittest.TestCase):
         self.bucket_name = _SHARED_BUCKET
         clear_out_bucket(self.bucket_name, self.region)
         self.session = boto3.session.Session(region_name=self.region)
-        self.s3 = self.session.resource('s3')
+        self.s3 = self.session.resource('s3', endpoint_url=_ENDPOINT_URL)
         self.bucket = self.s3.Bucket(self.bucket_name)
 
     def create_bucket_resource(self, bucket_name=None, region=None):
@@ -293,7 +294,8 @@ class TestS3Transfers(unittest.TestCase):
         self.bucket_name = _SHARED_BUCKET
         clear_out_bucket(self.bucket_name, self.region)
         self.session = boto3.session.Session(region_name=self.region)
-        self.client = self.session.client('s3', self.region)
+        self.client = self.session.client(
+            's3', self.region, endpoint_url=_ENDPOINT_URL)
         self.files = FileCreator()
         self.progress = 0
 
@@ -477,7 +479,7 @@ class TestS3Transfers(unittest.TestCase):
                 self.amount_seen += amount
 
         client = self.session.client(
-            's3', self.region,
+            's3', self.region, endpoint_url=_ENDPOINT_URL,
             config=Config(signature_version='s3v4'))
         transfer = boto3.s3.transfer.S3Transfer(client)
         filename = self.files.create_file_with_size(
@@ -666,7 +668,8 @@ class TestS3Transfers(unittest.TestCase):
     def test_transfer_methods_through_bucket(self):
         # This is just a sanity check to ensure that the bucket interface work.
         key = 'bucket.txt'
-        bucket = self.session.resource('s3').Bucket(self.bucket_name)
+        bucket = self.session.resource(
+            's3', endpoint_url=_ENDPOINT_URL).Bucket(self.bucket_name)
         filename = self.files.create_file_with_size(key, 1024*1024)
         bucket.upload_file(Filename=filename, Key=key)
         self.addCleanup(self.delete_object, key)
@@ -677,7 +680,8 @@ class TestS3Transfers(unittest.TestCase):
     def test_transfer_methods_through_object(self):
         # This is just a sanity check to ensure that the object interface work.
         key = 'object.txt'
-        obj = self.session.resource('s3').Object(self.bucket_name, key)
+        obj = self.session.resource(
+            's3', endpoint_url=_ENDPOINT_URL).Object(self.bucket_name, key)
         filename = self.files.create_file_with_size(key, 1024*1024)
         obj.upload_file(Filename=filename)
         self.addCleanup(self.delete_object, key)
@@ -692,7 +696,7 @@ class TestCustomS3BucketLoad(unittest.TestCase):
         self.bucket_name = _SHARED_BUCKET
         clear_out_bucket(self.bucket_name, self.region)
         self.session = boto3.session.Session(region_name=self.region)
-        self.s3 = self.session.resource('s3')
+        self.s3 = self.session.resource('s3', endpoint_url=_ENDPOINT_URL)
 
     def test_can_access_buckets_creation_date(self):
         bucket = self.s3.Bucket(self.bucket_name)
