@@ -58,8 +58,8 @@ def random_bucket_name(prefix='boto3-transfer', num_chars=10):
 
 
 _SHARED_BUCKET = random_bucket_name()
-_DEFAULT_REGION = 'us-west-2'
-_ENDPOINT_URL = None
+_DEFAULT_REGION = 'us-east-1'
+_ENDPOINT_URL = 'http://saio:8080'
 
 
 def setup_module():
